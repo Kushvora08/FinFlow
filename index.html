@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background-color: #2a2a4a;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            padding: 2rem;
+        }
+
+        .card {
+            background-color: #3b3b5e;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .button {
+            transition: all 0.3s ease;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        .text-neon-teal {
+          color: #00d2d3;
+        }
+        .bg-neon-teal {
+          background-color: #00d2d3;
+        }
+        .border-neon-teal {
+          border-color: #00d2d3;
+        }
+
+        .modal {
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 50;
+        }
+        
+        #loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="relative">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden">
+        <div class="loader"></div>
+    </div>
+    
+    <!-- Welcome Page -->
+    <div id="welcome-page" class="w-full max-w-lg text-center p-8 bg-gray-800 rounded-2xl shadow-2xl space-y-6">
+        <h1 class="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-teal-600 animate-pulse">FinFlow</h1>
+        <p class="text-xl text-gray-300 font-light">Your modern way to master your money.</p>
+        <div class="mt-8 space-y-4 text-left">
+            <div class="flex items-center space-x-4">
+                <span class="text-4xl text-neon-teal">📊</span>
+                <p class="text-lg">Gain powerful **spending insights** that help you understand where your money goes, so you can spend smarter.</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-4xl text-neon-teal">💸</span>
+                <p class="text-lg">Track all your monthly **subscriptions** in one place, so you'll never be surprised by a forgotten bill again.</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-4xl text-neon-teal">🛡️</span>
+                <p class="text-lg">Set and stick to your budget with real-time tracking and a simple, **user-friendly** interface.</p>
+            </div>
+        </div>
+        <button id="get-started-btn" class="w-full button bg-teal-500 text-white font-medium py-3 rounded-lg text-lg mt-8 shadow-xl hover:bg-teal-600">
+            Get Started
+        </button>
+    </div>
+
+    <!-- Login/Registration Page -->
+    <div id="auth-page" class="w-full max-w-md p-8 bg-gray-800 rounded-2xl shadow-2xl space-y-6 hidden">
+        <h1 id="auth-title" class="text-3xl font-bold text-center text-neon-teal">Login to FinFlow</h1>
+        <form id="auth-form" class="space-y-4">
+            <div>
+                <label for="username" class="block text-gray-300 text-sm font-medium">Username</label>
+                <input type="text" id="username" required class="mt-1 block w-full rounded-md bg-gray-700 text-white border-transparent focus:ring-2 focus:ring-teal-400 focus:border-transparent">
+            </div>
+            <div>
+                <label for="password" class="block text-gray-300 text-sm font-medium">Password</label>
+                <input type="password" id="password" required class="mt-1 block w-full rounded-md bg-gray-700 text-white border-transparent focus:ring-2 focus:ring-teal-400 focus:border-transparent">
+            </div>
+            <button type="submit" id="auth-submit-btn" class="w-full button bg-teal-500 text-white font-medium py-2 rounded-lg mt-4">Login</button>
+        </form>
+        <p class="text-center text-gray-400">
+            <span id="auth-toggle-text">Don't have an account?</span>
+            <button id="auth-toggle-btn" class="text-neon-teal font-medium hover:underline">Register here.</button>
+        </p>
+        <p class="text-center text-red-400 text-sm" id="auth-error-message"></p>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="finflow-app" class="hidden container">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-neon-teal">FinFlow</h1>
+            <div class="flex items-center space-x-4">
+                <select id="currency-select" class="bg-gray-700 rounded-lg p-2 text-white">
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="INR">INR (₹)</option>
+                </select>
+                <button id="add-income-btn" class="button bg-green-500 text-white font-medium py-2 px-6 rounded-full shadow-lg">
+                    + Income
+                </button>
+                <button id="add-expense-btn" class="button bg-neon-teal text-white font-medium py-2 px-6 rounded-full shadow-lg">
+                    + Expense
+                </button>
+            </div>
+        </div>
+        <div class="flex justify-end mb-4 space-x-2">
+            <button id="view-history-btn" class="button text-sm text-gray-400 hover:text-white">View Past Months</button>
+            <button id="logout-btn" class="button text-sm text-gray-400 hover:text-white">Logout</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <!-- Total Spent Card -->
+            <div class="card text-center">
+                <p class="text-gray-400 text-sm">Total Spent (This Month)</p>
+                <p id="total-spent" class="text-4xl font-bold mt-2">$0.00</p>
+            </div>
+            <!-- Total Income Card -->
+            <div class="card text-center">
+                <p class="text-gray-400 text-sm">Total Income (This Month)</p>
+                <p id="total-income" class="text-4xl font-bold mt-2 text-green-400">$0.00</p>
+            </div>
+            <!-- Budget Remaining Card (now a button) -->
+            <button id="budget-card-btn" class="card text-center button">
+                <p class="text-gray-400 text-sm">Budget Remaining</p>
+                <p id="budget-remaining" class="text-4xl font-bold mt-2 text-green-400">$0.00</p>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Spending by Category Chart -->
+            <div class="card">
+                <h2 class="text-xl font-medium mb-4">Spending by Category</h2>
+                <div class="h-64 flex justify-center items-center">
+                    <canvas id="categoryChart"></canvas>
+                    <p id="chart-placeholder" class="text-gray-500 text-center hidden">No data to display yet.</p>
+                </div>
+            </div>
+            <!-- Recent Transactions List -->
+            <div class="card">
+                <h2 class="text-xl font-medium mb-4">Recent Transactions</h2>
+                <ul id="transactions-list" class="space-y-3 max-h-64 overflow-y-auto">
+                    <!-- Transactions will be inserted here by JavaScript -->
+                    <li class="text-gray-500 text-center py-4">No transactions added yet.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Subscription Tracker (Unique Feature) -->
+        <div class="card">
+            <h2 class="text-xl font-medium mb-4 flex justify-between items-center">
+                Subscription Tracker
+                <span id="monthly-subs-cost" class="text-lg font-bold text-red-400">$0.00/mo</span>
+            </h2>
+            <ul id="subscriptions-list" class="space-y-2">
+                <!-- Subscriptions will be inserted here by JavaScript -->
+                <li class="text-gray-500 text-center py-2">No recurring subscriptions.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Add Expense Modal -->
+    <div id="add-expense-modal" class="modal fixed inset-0 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm transform scale-95 transition-transform duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white">Add New Expense</h2>
+                <button id="close-expense-modal-btn" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <form id="add-expense-form" class="space-y-4">
+                <div>
+                    <label for="expense-amount" id="expense-amount-label" class="block text-gray-300 text-sm font-medium">Amount ($)</label>
+                    <input type="number" id="expense-amount" step="0.01" required class="mt-1 block w-full rounded-md bg-gray-700 text-white border-transparent focus:ring-2 focus:ring-teal-400 focus:border-transparent">
+                </div>
+                <div>
+                    <label for="expense-description" class="block text-gray-300 text-sm font-medium">Description</label>
+                    <input type="text" id="expense-description" required class="mt-1 block w-full rounded-md bg-gray-700 text-white border-transparent focus:ring-2 focus:ring-teal-400 focus:border-transparent">
+                </div>
+                <div>
+                    <label for="expense-category" class="block text-gray-300 text-sm font-medium">Category</label>
+                    <select id="expense-category" required class="mt-1 block w-full rounded-md bg-gray-700 text-white border-transparent focus:ring-2 focus:ring-teal-400 focus:border-transparent">
+                        <option value="Food & Drink">Food & Drink</option>
+                        <option value="Transportation">Transportation</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Housing">Housing</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Groceries">Groceries</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="is-subscription" class="rounded text-teal-400 bg-gray-700 border-gray-600 focus:ring-teal-400">
+                    <label for="is-subscription" class="text-gray-300 text-sm font-medium">Is this a monthly subscription?</label>
+                </div>
+                <button type="submit" class="w-full button bg-teal-500 text-white font-medium py-2 rounded-lg mt-4">Add Expense</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Add Income Modal -->
+    <div id="add-income-modal" class="modal fixed inset-0 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm transform scale-95 transition-transform duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white">Add New Income</h2>
+                <button id="close-income-modal-btn" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <form id="add-income-form" class="space-y-4">
+                <div>
+                    <label for="income-amount" id="income-amount-label" class="block text-gray-300 text-sm font-medium">Amount ($)</label>
+                    <input type="number" id="income-amount" step="0.01" required class="mt-1 block w-full rounded-md bg-gray-700 text-white border-transparent focus:ring-2 focus:ring-teal-400 focus:border-transparent">
+                </div>
+                <div>
+                    <label for="income-description" class="block text-gray-300 text-sm font-medium">Description</label>
+                    <input type="text" id="income-description" required class="mt-1 block w-full rounded-md bg-gray-700 text-white border-transparent focus:ring-2 focus:ring-teal-400 focus:border-transparent">
+                </div>
+                <button type="submit" class="w-full button bg-green-500 text-white font-medium py-2 rounded-lg mt-4">Add Income</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Set Budget Modal -->
+    <div id="set-budget-modal" class="modal fixed inset-0 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm transform scale-95 transition-transform duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white">Set Monthly Budget</h2>
+                <button id="close-budget-modal-btn" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <form id="set-budget-form" class="space-y-4">
+                <div>
+                    <label for="monthly-budget" id="monthly-budget-label" class="block text-gray-300 text-sm font-medium">Budget Amount ($)</label>
+                    <input type="number" id="monthly-budget" step="1" required class="mt-1 block w-full rounded-md bg-gray-700 text-white border-transparent focus:ring-2 focus:ring-teal-400 focus:border-transparent">
+                </div>
+                <button type="submit" class="w-full button bg-teal-500 text-white font-medium py-2 rounded-lg mt-4">Set Budget</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Historical Reports Modal -->
+    <div id="history-modal" class="modal fixed inset-0 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg transform scale-95 transition-transform duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white">Historical Reports</h2>
+                <button id="close-history-modal-btn" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <div id="history-list" class="max-h-96 overflow-y-auto space-y-4">
+                <!-- Historical summaries will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Box -->
+    <div id="message-box" class="fixed top-4 right-4 p-4 rounded-lg text-white transition-opacity duration-300 opacity-0 hidden"></div>
+
+    <script>
+        // Data and State
+        let allExpenses = JSON.parse(localStorage.getItem('finflow_expenses')) || [];
+        let allIncomes = JSON.parse(localStorage.getItem('finflow_incomes')) || [];
+        let allSubscriptions = JSON.parse(localStorage.getItem('finflow_subscriptions')) || [];
+        let monthlyBudget = parseFloat(localStorage.getItem('finflow_budget')) || 1000;
+        let selectedCurrency = localStorage.getItem('finflow_currency') || 'USD';
+        let isAuthenticated = false;
+        let authMode = 'login'; // 'login' or 'register'
+
+        const currencySymbols = {
+            'USD': '$',
+            'EUR': '€',
+            'INR': '₹'
+        };
+
+        // DOM Elements
+        const welcomePage = document.getElementById('welcome-page');
+        const getStartedBtn = document.getElementById('get-started-btn');
+        const authPage = document.getElementById('auth-page');
+        const finflowApp = document.getElementById('finflow-app');
+        const authForm = document.getElementById('auth-form');
+        const authTitle = document.getElementById('auth-title');
+        const authSubmitBtn = document.getElementById('auth-submit-btn');
+        const authToggleBtn = document.getElementById('auth-toggle-btn');
+        const authToggleText = document.getElementById('auth-toggle-text');
+        const authErrorMessage = document.getElementById('auth-error-message');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const totalSpentEl = document.getElementById('total-spent');
+        const totalIncomeEl = document.getElementById('total-income');
+        const budgetRemainingEl = document.getElementById('budget-remaining');
+        const transactionsListEl = document.getElementById('transactions-list');
+        const subscriptionsListEl = document.getElementById('subscriptions-list');
+        const monthlySubsCostEl = document.getElementById('monthly-subs-cost');
+        const monthlyInsightEl = document.getElementById('monthly-insight');
+        const addExpenseBtn = document.getElementById('add-expense-btn');
+        const addIncomeBtn = document.getElementById('add-income-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const viewHistoryBtn = document.getElementById('view-history-btn');
+        const budgetCardBtn = document.getElementById('budget-card-btn');
+        const currencySelect = document.getElementById('currency-select');
+        const expenseAmountLabel = document.getElementById('expense-amount-label');
+        const incomeAmountLabel = document.getElementById('income-amount-label');
+        const monthlyBudgetLabel = document.getElementById('monthly-budget-label');
+
+        // Modals and Forms
+        const expenseModal = document.getElementById('add-expense-modal');
+        const incomeModal = document.getElementById('add-income-modal');
+        const budgetModal = document.getElementById('set-budget-modal');
+        const historyModal = document.getElementById('history-modal');
+        const addExpenseForm = document.getElementById('add-expense-form');
+        const addIncomeForm = document.getElementById('add-income-form');
+        const setBudgetForm = document.getElementById('set-budget-form');
+        const historyListEl = document.getElementById('history-list');
+        let transactionsChart;
+        const messageBox = document.getElementById('message-box');
+
+        // Functions to save and load data from localStorage
+        function saveData() {
+            localStorage.setItem('finflow_expenses', JSON.stringify(allExpenses));
+            localStorage.setItem('finflow_incomes', JSON.stringify(allIncomes));
+            localStorage.setItem('finflow_subscriptions', JSON.stringify(allSubscriptions));
+            localStorage.setItem('finflow_budget', monthlyBudget);
+            localStorage.setItem('finflow_currency', selectedCurrency);
+        }
+
+        // Utility functions
+        function showMessage(text, isError = false) {
+            messageBox.textContent = text;
+            messageBox.className = `fixed top-4 right-4 p-4 rounded-lg text-white transition-opacity duration-300 opacity-100 block ${isError ? 'bg-red-500' : 'bg-green-500'}`;
+            setTimeout(() => {
+                messageBox.classList.remove('opacity-100');
+                messageBox.classList.add('opacity-0');
+            }, 3000);
+        }
+        
+        function showLoading() {
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+        
+        function formatCurrency(amount) {
+            const symbol = currencySymbols[selectedCurrency] || '$';
+            return `${symbol}${amount.toFixed(2)}`;
+        }
+
+        // Authentication logic
+        function showAuthPage(mode) {
+            authMode = mode;
+            welcomePage.classList.add('hidden');
+            finflowApp.classList.add('hidden');
+            authPage.classList.remove('hidden');
+
+            if (mode === 'login') {
+                authTitle.textContent = "Login to FinFlow";
+                authSubmitBtn.textContent = "Login";
+                authToggleText.textContent = "Don't have an account?";
+                authToggleBtn.textContent = "Register here.";
+            } else {
+                authTitle.textContent = "Register for FinFlow";
+                authSubmitBtn.textContent = "Register";
+                authToggleText.textContent = "Already have an account?";
+                authToggleBtn.textContent = "Login here.";
+            }
+            authErrorMessage.textContent = '';
+        }
+
+        function checkAuth() {
+            const currentUser = localStorage.getItem('finflow_currentUser');
+            if (currentUser) {
+                isAuthenticated = true;
+                showApp();
+            } else {
+                isAuthenticated = false;
+                showAuthPage('login');
+            }
+        }
+
+        function showApp() {
+            welcomePage.classList.add('hidden');
+            authPage.classList.add('hidden');
+            finflowApp.classList.remove('hidden');
+            updateDashboard();
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('finflow_currentUser');
+            isAuthenticated = false;
+            showMessage("Logged out successfully.");
+            showAuthPage('login');
+        }
+
+        authForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            authErrorMessage.textContent = '';
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const users = JSON.parse(localStorage.getItem('finflow_users')) || {};
+
+            if (authMode === 'register') {
+                if (users[username]) {
+                    authErrorMessage.textContent = "Username already exists.";
+                } else {
+                    users[username] = password;
+                    localStorage.setItem('finflow_users', JSON.stringify(users));
+                    localStorage.setItem('finflow_currentUser', username);
+                    showMessage("Registration successful!");
+                    checkAuth();
+                }
+            } else { // Login mode
+                if (users[username] && users[username] === password) {
+                    localStorage.setItem('finflow_currentUser', username);
+                    showMessage("Login successful!");
+                    checkAuth();
+                } else {
+                    authErrorMessage.textContent = "Invalid username or password.";
+                }
+            }
+        });
+
+        authToggleBtn.addEventListener('click', () => {
+            if (authMode === 'login') {
+                showAuthPage('register');
+            } else {
+                showAuthPage('login');
+            }
+        });
+
+        getStartedBtn.addEventListener('click', () => {
+            checkAuth();
+        });
+
+        // Dashboard update logic
+        function updateDashboard() {
+            const today = new Date();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            
+            const monthlyExpenses = allExpenses.filter(t => {
+                const date = new Date(t.date);
+                return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+            });
+
+            const monthlyIncomes = allIncomes.filter(t => {
+                const date = new Date(t.date);
+                return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+            });
+
+            const totalSpent = monthlyExpenses.reduce((sum, t) => sum + t.amount, 0);
+            const totalIncome = monthlyIncomes.reduce((sum, t) => sum + t.amount, 0);
+
+            totalSpentEl.textContent = formatCurrency(totalSpent);
+            totalIncomeEl.textContent = formatCurrency(totalIncome);
+
+            const budgetRemaining = monthlyBudget - totalSpent;
+            budgetRemainingEl.textContent = formatCurrency(budgetRemaining);
+            budgetRemainingEl.classList.toggle('text-green-400', budgetRemaining >= 0);
+            budgetRemainingEl.classList.toggle('text-red-400', budgetRemaining < 0);
+            
+            // Update currency symbols on modals
+            const symbol = currencySymbols[selectedCurrency] || '$';
+            expenseAmountLabel.textContent = `Amount (${symbol})`;
+            incomeAmountLabel.textContent = `Amount (${symbol})`;
+            monthlyBudgetLabel.textContent = `Budget Amount (${symbol})`;
+
+            updateChart(monthlyExpenses);
+            renderTransactionsList([...monthlyExpenses, ...monthlyIncomes]); // Combine for the list
+            updateSubscriptions();
+            generateMonthlyInsight(monthlyExpenses);
+        }
+        
+        // Renders the list of transactions
+        function renderTransactionsList(transactions) {
+            transactionsListEl.innerHTML = '';
+            if (transactions.length === 0) {
+                transactionsListEl.innerHTML = '<li class="text-gray-500 text-center py-4">No transactions added yet.</li>';
+                return;
+            }
+            // Sort by date descending
+            const sortedTransactions = transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+            sortedTransactions.forEach(t => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center bg-gray-700 p-3 rounded-md';
+                const isExpense = !t.income;
+                const sign = isExpense ? '-' : '+';
+                const color = isExpense ? 'text-red-400' : 'text-green-400';
+                li.innerHTML = `
+                    <div>
+                        <p class="font-medium text-white">${t.description}</p>
+                        <p class="text-xs text-gray-400 mt-1">${t.category ? t.category + ' - ' : ''}${new Date(t.date).toLocaleDateString()}</p>
+                    </div>
+                    <span class="font-bold text-lg ${color}">${sign}${formatCurrency(t.amount)}</span>
+                `;
+                transactionsListEl.appendChild(li);
+            });
+        }
+
+        // Renders the category donut chart
+        function updateChart(transactions) {
+            const categoryData = transactions.reduce((acc, t) => {
+                acc[t.category] = (acc[t.category] || 0) + t.amount;
+                return acc;
+            }, {});
+
+            const categories = Object.keys(categoryData);
+            const amounts = Object.values(categoryData);
+
+            if (transactionsChart) {
+                transactionsChart.destroy();
+            }
+
+            if (categories.length === 0) {
+                document.getElementById('chart-placeholder').classList.remove('hidden');
+                return;
+            } else {
+                 document.getElementById('chart-placeholder').classList.add('hidden');
+            }
+
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            transactionsChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        data: amounts,
+                        backgroundColor: [
+                            '#00d2d3', // Neon Teal
+                            '#f7cd2e', // Gold
+                            '#ff6b6b', // Red
+                            '#a29bfe', // Purple
+                            '#81ecec', // Mint
+                            '#ffafaf', // Light Red
+                            '#fdcb6e', // Orange
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e0e0e0'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update subscriptions list and cost
+        function updateSubscriptions() {
+            subscriptionsListEl.innerHTML = '';
+            let totalSubscriptionCost = 0;
+            if (allSubscriptions.length === 0) {
+                subscriptionsListEl.innerHTML = '<li class="text-gray-500 text-center py-2">No recurring subscriptions.</li>';
+            } else {
+                allSubscriptions.forEach(sub => {
+                    totalSubscriptionCost += sub.amount;
+                    const li = document.createElement('li');
+                    li.className = 'flex justify-between items-center text-gray-300';
+                    li.innerHTML = `
+                        <span>${sub.description}</span>
+                        <span class="font-medium text-white">${formatCurrency(sub.amount)}</span>
+                    `;
+                    subscriptionsListEl.appendChild(li);
+                });
+            }
+            monthlySubsCostEl.textContent = `${formatCurrency(totalSubscriptionCost)}/mo`;
+        }
+
+        // Generates a simple spending insight
+        function generateMonthlyInsight(currentMonthTransactions) {
+            const lastMonth = new Date();
+            lastMonth.setMonth(lastMonth.getMonth() - 1);
+
+            const lastMonthTransactions = allExpenses.filter(t => {
+                const date = new Date(t.date);
+                return date.getMonth() === lastMonth.getMonth() && date.getFullYear() === lastMonth.getFullYear();
+            });
+            
+            const currentMonthTotal = currentMonthTransactions.reduce((sum, t) => sum + t.amount, 0);
+            const lastMonthTotal = lastMonthTransactions.reduce((sum, t) => sum + t.amount, 0);
+            
+            let insightText = '';
+            if (lastMonthTotal === 0 && currentMonthTotal > 0) {
+                insightText = `Looks like you're starting your FinFlow journey! You've spent ${formatCurrency(currentMonthTotal)} so far this month.`;
+            } else if (lastMonthTotal > 0 && currentMonthTotal > lastMonthTotal) {
+                const percentage = ((currentMonthTotal - lastMonthTotal) / lastMonthTotal) * 100;
+                insightText = `You've spent ${percentage.toFixed(0)}% more this month compared to last month.`;
+            } else if (lastMonthTotal > 0 && currentMonthTotal < lastMonthTotal) {
+                const percentage = ((lastMonthTotal - currentMonthTotal) / lastMonthTotal) * 100;
+                insightText = `Great job! You've spent ${percentage.toFixed(0)}% less this month than last month.`;
+            } else {
+                insightText = `Your spending this month is right on track with last month!`;
+            }
+            
+            monthlyInsightEl.textContent = insightText;
+        }
+
+        // Event Listeners for modals
+        addExpenseBtn.addEventListener('click', () => {
+            expenseModal.classList.remove('hidden');
+        });
+        document.getElementById('close-expense-modal-btn').addEventListener('click', () => {
+            expenseModal.classList.add('hidden');
+        });
+        
+        addIncomeBtn.addEventListener('click', () => {
+            incomeModal.classList.remove('hidden');
+        });
+        document.getElementById('close-income-modal-btn').addEventListener('click', () => {
+            incomeModal.classList.add('hidden');
+        });
+
+        budgetCardBtn.addEventListener('click', () => {
+            document.getElementById('monthly-budget').value = monthlyBudget;
+            budgetModal.classList.remove('hidden');
+        });
+        document.getElementById('close-budget-modal-btn').addEventListener('click', () => {
+            budgetModal.classList.add('hidden');
+        });
+        
+        viewHistoryBtn.addEventListener('click', () => {
+            renderHistoricalReports();
+            historyModal.classList.remove('hidden');
+        });
+        document.getElementById('close-history-modal-btn').addEventListener('click', () => {
+            historyModal.classList.add('hidden');
+        });
+
+        logoutBtn.addEventListener('click', handleLogout);
+        
+        currencySelect.addEventListener('change', (e) => {
+            selectedCurrency = e.target.value;
+            saveData();
+            updateDashboard();
+        });
+
+        // Form Submission Handlers
+        addExpenseForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const amount = parseFloat(document.getElementById('expense-amount').value);
+            const description = document.getElementById('expense-description').value;
+            const category = document.getElementById('expense-category').value;
+            const isSubscription = document.getElementById('is-subscription').checked;
+            const date = new Date().toISOString();
+
+            if (isNaN(amount) || amount <= 0) {
+                showMessage("Please enter a valid amount.", true);
+                return;
+            }
+            
+            const newExpense = { amount, description, category, date };
+            if (isSubscription) {
+                allSubscriptions.push(newExpense);
+            } else {
+                allExpenses.push(newExpense);
+            }
+            
+            saveData();
+            showMessage("Expense added successfully!");
+            addExpenseForm.reset();
+            expenseModal.classList.add('hidden');
+            updateDashboard();
+        });
+
+        addIncomeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const amount = parseFloat(document.getElementById('income-amount').value);
+            const description = document.getElementById('income-description').value;
+            const date = new Date().toISOString();
+
+            if (isNaN(amount) || amount <= 0) {
+                showMessage("Please enter a valid amount.", true);
+                return;
+            }
+            
+            const newIncome = { amount, description, date, income: true };
+            allIncomes.push(newIncome);
+            
+            saveData();
+            showMessage("Income added successfully!");
+            addIncomeForm.reset();
+            incomeModal.classList.add('hidden');
+            updateDashboard();
+        });
+
+        setBudgetForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newBudget = parseFloat(document.getElementById('monthly-budget').value);
+
+            if (isNaN(newBudget) || newBudget < 0) {
+                showMessage("Please enter a valid budget.", true);
+                return;
+            }
+
+            monthlyBudget = newBudget;
+            saveData();
+            showMessage("Budget updated successfully!");
+            budgetModal.classList.add('hidden');
+            updateDashboard();
+        });
+
+        // Historical Reports Logic
+        function renderHistoricalReports() {
+            historyListEl.innerHTML = '';
+            
+            const allTransactions = [...allExpenses, ...allIncomes].sort((a, b) => new Date(a.date) - new Date(b.date));
+            if (allTransactions.length === 0) {
+                historyListEl.innerHTML = '<p class="text-gray-500 text-center">No historical data available.</p>';
+                return;
+            }
+
+            const monthlySummaries = {};
+            allTransactions.forEach(t => {
+                const date = new Date(t.date);
+                const monthYear = `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`;
+                if (!monthlySummaries[monthYear]) {
+                    monthlySummaries[monthYear] = { expenses: 0, incomes: 0, totalNet: 0 };
+                }
+                if (t.income) {
+                    monthlySummaries[monthYear].incomes += t.amount;
+                } else {
+                    monthlySummaries[monthYear].expenses += t.amount;
+                }
+            });
+            
+            for (const monthYear in monthlySummaries) {
+                const summary = monthlySummaries[monthYear];
+                summary.totalNet = summary.incomes - summary.expenses;
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                const netColor = summary.totalNet >= 0 ? 'text-green-400' : 'text-red-400';
+                card.innerHTML = `
+                    <h3 class="text-lg font-bold text-white mb-2">${monthYear}</h3>
+                    <p class="text-sm text-gray-400">Total Spent: <span class="text-white font-medium">-${formatCurrency(summary.expenses)}</span></p>
+                    <p class="text-sm text-gray-400">Total Income: <span class="text-white font-medium">+${formatCurrency(summary.incomes)}</span></p>
+                    <p class="text-sm text-gray-400 mt-2">Net Balance: <span class="font-bold ${netColor}">${summary.totalNet >= 0 ? '+' : ''}${formatCurrency(summary.totalNet)}</span></p>
+                `;
+                historyListEl.appendChild(card);
+            }
+        }
+        
+        // Initial load
+        window.onload = () => {
+            // Set the selected currency in the dropdown
+            currencySelect.value = selectedCurrency;
+            
+            // Check if user is already authenticated
+            const currentUser = localStorage.getItem('finflow_currentUser');
+            if (currentUser) {
+                showApp();
+            } else {
+                welcomePage.classList.remove('hidden');
+            }
+        };
+
+    </script>
+</body>
+</html>
